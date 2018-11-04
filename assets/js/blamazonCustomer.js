@@ -21,10 +21,8 @@ function getAllItems() {
         const items = []
         res.forEach(element => {
             let item = {
-                item_id: element.ITEM_ID,
                 name: element.PRODUCT_NAME,
-                price: element.PRICE,
-                stock: element.STOCK_QUANTITY,
+                value: element,
             }
             items.push(item);
         });
@@ -38,6 +36,36 @@ function getAllItems() {
                 name: 'itemChoice',
                 choices: items
             }
-        ])
+        ]).then(item => {
+            inquirer.prompt([
+                // Ask about quantity and validate it is a number
+                {
+                    type: 'input',
+                    message: 'How many would you like to buy?',
+                    name: 'itemQuantity',
+                    validate: (input) => {
+                        return (!isNaN(parseFloat(input)) && input > 0)
+                    }
+                }
+            ]).then(quantity => {
+                console.log(item.itemChoice.PRODUCT_NAME);
+                if (quantity.itemQuantity <= item.itemChoice.STOCK_QUANTITY) {
+                    let newStock = item.itemChoice.STOCK_QUANTITY - quantity.itemQuantity
+                    updateQuantity('products', item.itemChoice.PRODUCT_NAME, newStock)
+                } else {
+                    console.log(`Sorry we only have ${item.itemChoice.STOCK_QUANTITY} available`)
+                }
+            })
+        })
+    })
+}
+
+// Update a given item's quantity
+function updateQuantity(table, item, quantity) {
+    var query = connection.query(`UPDATE ${table} SET STOCK_QUANTITY = ${quantity} WHERE PRODUCT_NAME = \'${item}\'`, (err, res) => {
+        if (err) throw err;
+        console.log(query);
+        console.log(res);
+        console.log(res.affectedRows);
     })
 }
