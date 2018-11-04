@@ -46,5 +46,5 @@ VALUES
  'Beyblade', 'Toys', 12.99, 35
 ),
 ( 
- 'Tamogotchi', 'Toys', 10.99, 50
-)
+ 'Tamogotchi', 'Toys', 10.99, 0
+);

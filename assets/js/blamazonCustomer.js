@@ -1,19 +1,23 @@
+// Required packages
 const inquirer = require('inquirer');
 const mysql = require('mysql');
 
+// Connection details
 const connection = mysql.createConnection({
-    host: 'localhost',
-    port: '3306',
-    user: 'root',
-    password: '',
-    database: 'blamazon',
+    host: process.env.DB_HOST || 'localhost',
+    port: process.env.DB_PORT || '3306',
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASS || '',
+    database: process.env.DB || 'blamazon',
 });
 
+// Connect to the DB
 connection.connect((err) => {
     if (err) throw err;
     console.log(`Connected to database successfully on thread #${connection.threadId}`);
     getAllItems();
 });
+
 
 function getAllItems() {
     connection.query('Select ITEM_ID, PRODUCT_NAME, PRICE, STOCK_QUANTITY from products', (err, res) => {
@@ -26,7 +30,6 @@ function getAllItems() {
             }
             items.push(item);
         });
-        console.log(items);
 
         inquirer.prompt([
             // Select the ID
@@ -37,35 +40,41 @@ function getAllItems() {
                 choices: items
             }
         ]).then(item => {
-            inquirer.prompt([
-                // Ask about quantity and validate it is a number
-                {
-                    type: 'input',
-                    message: 'How many would you like to buy?',
-                    name: 'itemQuantity',
-                    validate: (input) => {
-                        return (!isNaN(parseFloat(input)) && input > 0)
-                    }
-                }
-            ]).then(quantity => {
-                console.log(item.itemChoice.PRODUCT_NAME);
-                if (quantity.itemQuantity <= item.itemChoice.STOCK_QUANTITY) {
-                    let newStock = item.itemChoice.STOCK_QUANTITY - quantity.itemQuantity
-                    updateQuantity('products', item.itemChoice.PRODUCT_NAME, newStock)
-                } else {
-                    console.log(`Sorry we only have ${item.itemChoice.STOCK_QUANTITY} available`)
-                }
-            })
+            orderItem(item);
         })
+    })
+}
+
+// Order Item
+function orderItem(item) {
+    inquirer.prompt([
+        // Ask about quantity and validate it is a number > 0
+        {
+            type: 'input',
+            message: 'How many would you like to buy?',
+            name: 'itemQuantity',
+            validate: (input) => {
+                return (!isNaN(parseFloat(input)) && input > 0)
+            }
+        }
+    ]).then(quantity => {
+        if (quantity.itemQuantity <= item.itemChoice.STOCK_QUANTITY) {
+            let newStock = item.itemChoice.STOCK_QUANTITY - quantity.itemQuantity
+            updateQuantity('products', item.itemChoice.PRODUCT_NAME, newStock)
+        } else if (item.itemChoice.STOCK_QUANTITY === 0) {
+            console.log(`\nSorry we have dont have any more ${item.itemChoice.PRODUCT_NAME}`)
+            getAllItems();
+        } else {
+            console.log(`\nSorry we only have ${item.itemChoice.STOCK_QUANTITY} available`)
+            orderItem(item);
+        }
     })
 }
 
 // Update a given item's quantity
 function updateQuantity(table, item, quantity) {
-    var query = connection.query(`UPDATE ${table} SET STOCK_QUANTITY = ${quantity} WHERE PRODUCT_NAME = \'${item}\'`, (err, res) => {
+    connection.query(`UPDATE ${table} SET STOCK_QUANTITY = ${quantity} WHERE PRODUCT_NAME = \'${item}\'`, (err, res) => {
         if (err) throw err;
-        console.log(query);
-        console.log(res);
-        console.log(res.affectedRows);
+        console.log(`${res.affectedRows} row(s) was affected`);
     })
 }
